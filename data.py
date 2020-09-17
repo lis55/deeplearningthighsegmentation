@@ -269,10 +269,42 @@ def labelVisualize(num_class,color_dict,img):
         img_out[img == i,:] = color_dict[i]
     return img_out / 255
 
-def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2):
+def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_frames_path=None, overlay=False, overlay_path=None):
+    '''
     for i,item in enumerate(npyfile):
         img = labelVisualize(num_class,COLOR_DICT,item) if flag_multi_class else item[:,:,0]
-        io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
+        #io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
+        io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4]+".png"), img)
+    '''
+    if overlay:
+        all_frames = os.listdir(test_frames_path)
+        for i, item in enumerate(npyfile):
+            img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, 0]
+            io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4] + ".png"), img)
+            overlay = Image.fromarray((img*255).astype('uint8'))
+            background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
+            background = background[:, :, 0] / np.max(background[:, :, 0])
+            background = Image.fromarray((background * 255).astype('uint8'))
+            background = background.convert("RGBA")
+            overlay = overlay.convert("RGBA")
+
+            # Split into 3 channels
+            r, g, b, a = overlay.split()
+
+            # Increase Reds
+            g = b.point(lambda i: i * 0)
+
+            # Recombine back to RGB image
+            overlay = Image.merge('RGBA', (r, g, b, a))
+
+            new_img = Image.blend(background, overlay, 0.3)
+            # new_img = background
+            new_img.save(os.path.join(save_path, 'image_' + all_frames[i][6:16] + 'png'), "PNG")
+    else:
+        for i, item in enumerate(npyfile):
+            img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, 0]
+            # io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
+            io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4] + ".png"), img)
 
 def overlay(save_path, image_path, mask_path):
     all_frames = os.listdir(image_path)

@@ -7,16 +7,16 @@ import matplotlib.pyplot as plt
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
+
 print(tensorflow.test.is_built_with_cuda())
 print(tensorflow.test.gpu_device_name())
 
 train_images_path = 'C:/fasciafilled/train_frames'
 validation_images_path = 'C:/fasciafilled/val_frames'
-test_images_path = "G:/DL_test_dataset_other_studies/elderly_women/images"
+test_images_path = "G:/DL_test_dataset_other_studies/elderly_men/images"
 train_masks_path = 'C:/fasciafilled/train_masks'
 validation_masks_path = 'C:/fasciafilled/val_masks'
-test_masks_path = "G:/DL_test_dataset_other_studies/elderly_women/FASCIA_FINAL"
-
+test_masks_path = "G:/DL_test_dataset_other_studies/elderly_men/FASCIA_FINAL"
 
 all_frames = os.listdir(train_masks_path)
 gen = DataGenerator(all_frames, train_images_path, train_masks_path, to_fit=True,
@@ -62,13 +62,12 @@ plt.savefig('accuracy.png')
 
 '''
 
-results =  model.predict_generator(testGene, len(test_images_path), verbose=1)
-saveResult("C:/results", results)
-
+results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
+saveResult("C:/results", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay')
 #print accuracy and validation loss
 loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
 print(loss)
 print(acc)
 
 #Save overlay
-overlay('C:/resultsoverlay', test_images_path, "C:/results")
+#overlay('C:/resultsoverlay', test_images_path, "C:/results")
