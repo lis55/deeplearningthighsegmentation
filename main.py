@@ -11,16 +11,35 @@ os.environ["CUDA_VISIBLE_DEVICES"]=""
 print(tensorflow.test.is_built_with_cuda())
 print(tensorflow.test.gpu_device_name())
 
+data_gen_args = dict(shear_range=10,
+                    rotation_range=20,
+                    horizontal_flip=True,
+                    width_shift_range=0.3,
+                    height_shift_range=0.3,
+                    fill_mode='nearest')
+
 train_images_path = 'C:/fasciafilled/train_frames'
 validation_images_path = 'C:/fasciafilled/val_frames'
-test_images_path = "G:/DL_test_dataset_other_studies/elderly_men/images"
+test_images_path = "C:/fasciafilled/test_frames"
 train_masks_path = 'C:/fasciafilled/train_masks'
 validation_masks_path = 'C:/fasciafilled/val_masks'
-test_masks_path = "G:/DL_test_dataset_other_studies/elderly_men/FASCIA_FINAL"
+test_masks_path = "C:/fasciafilled/test_masks"
 
-all_frames = os.listdir(train_masks_path)
+all_frames = os.listdir(train_images_path)
 gen = DataGenerator(all_frames, train_images_path, train_masks_path, to_fit=True,
                     batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)
+'''
+for i in gen:
+  #pydicom.dcmread(gen(i))
+  print(len(i))
+
+  plt.imshow((i[0][0,:,:,0]),cmap=plt.cm.bone)
+  plt.imsave("dicom.png", i[0][0, :, :, 0])
+  plt.show()
+  plt.imshow((i[1][0,:,:,0]),cmap=plt.cm.bone)
+  plt.imsave("dicomlabel.png",i[1][0,:,:,0])
+  plt.show()
+'''
 all_frames = os.listdir(validation_images_path)
 genAug = DataGenerator(all_frames, validation_images_path, validation_masks_path, to_fit=True, batch_size=2,
                        dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)
@@ -33,7 +52,7 @@ testGene = DataGenerator(all_frames, test_images_path,
 model = unet(pretrained_weights="unet_ThighOuterSurface.hdf5")
 
 #uncomment the next section to train the network
-'''
+
 model_checkpoint = ModelCheckpoint('unet_ThighOuterSurfaceval.hdf5', monitor='val_loss', verbose=1, save_best_only=True)
 model_checkpoint2 = ModelCheckpoint('unet_ThighOuterSurface.hdf5', monitor='loss', verbose=1, save_best_only=True)
 history = model.fit_generator(gen, validation_data=genAug, validation_steps=205, steps_per_epoch=720, epochs=300,
@@ -60,7 +79,7 @@ plt.xlabel('epoch')
 plt.legend(['train accuracy', 'validation accuracy'], loc='upper left')
 plt.savefig('accuracy.png')
 
-'''
+
 
 results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
 saveResult("C:/results", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay')
