@@ -187,7 +187,7 @@ class DataGenerator(Sequence):
         for i, ID in enumerate(list_IDs_temp):
             # Store sample
             #y[i,] = self._load_grayscale_image_VTK(self.mask_path + '/'+'label_'+ID[6:15]+'.png')
-            y[i,] = self._load_grayscale_image(self.mask_path + '/' + 'label_' + ID[6:15] + '.png')
+            y[i,] = self._load_grayscale_image_VTK(self.mask_path + '/' + 'label_' + ID[6:15] + '.png')
 
         return y
 
@@ -198,9 +198,9 @@ class DataGenerator(Sequence):
         """
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.flip(img, 0)
+        img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
         img = img / 255
-
+        '''
         img2 = img.astype(np.float32)
 
         # --- the following holds the square root of the sum of squares of the image dimensions ---
@@ -211,8 +211,9 @@ class DataGenerator(Sequence):
 
         polar_image = polar_image.astype(np.uint8)
         img=polar_image
-
+        '''
         img = np.expand_dims(img, axis=2)
+        img=img.astype(np.float32)
 
         return img
 
@@ -223,17 +224,9 @@ class DataGenerator(Sequence):
         """
         img = load_dicom(image_path)
         img = img / np.max(img)
-        img2 = img.astype(np.float32)
 
-        # --- the following holds the square root of the sum of squares of the image dimensions ---
-        # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
-        value = np.sqrt(((img2.shape[0] / 2.0) ** 2.0) + ((img2.shape[1] / 2.0) ** 2.0))
+        self.polar(img)
 
-        polar_image = cv2.linearPolar(img2, (img2.shape[0] / 2, img2.shape[1] / 2), value, cv2.WARP_FILL_OUTLIERS)
-
-        #polar_image = polar_image.astype(np.uint8)
-        img = polar_image
-        img = np.expand_dims(img, axis=2)
         return img
 
     def _load_grayscale_image_VTK(self, image_path):
@@ -257,17 +250,25 @@ class DataGenerator(Sequence):
 
         img = img / np.amax(img)
         img = img.astype('float32')
+
+        self.polar(img)
+
         return img
 
-    def polar_transformation(self, arr):
+    def polar(self, img):
+        img2 = img.astype(np.float32)
 
-        x, y = arr[:, 0,0], arr[:, 1,0]
-        r = np.sqrt(x ** 2 + y ** 2)
-        t = np.arctan2(y, x)
-        arr2=np.zeros((512,512,1))
-        arr2[:,0,0]=r
-        arr2[:, 1, 0] = t
-        return arr2
+        # --- the following holds the square root of the sum of squares of the image dimensions ---
+        # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
+        value = np.sqrt(((img2.shape[0] / 2.0) ** 2.0) + ((img2.shape[1] / 2.0) ** 2.0))
+
+        polar_image = cv2.linearPolar(img2, (img2.shape[0] / 2, img2.shape[1] / 2), value, cv2.WARP_FILL_OUTLIERS)
+
+        # polar_image = polar_image.astype(np.uint8)
+        img = polar_image
+        img = np.expand_dims(img, axis=2)
+
+        return img
 
 def load_dicom(foldername, doflipz = True):
     reader = vtk.vtkDICOMImageReader()
@@ -318,9 +319,27 @@ def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_fr
         for i, item in enumerate(npyfile):
             img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, 0]
             io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4] + ".png"), img)
+            '''
+            img2 = img.astype(np.float32)
+            # --- the following holds the square root of the sum of squares of the image dimensions ---
+            # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
+            value = np.sqrt(((img2.shape[0] / 2.0) ** 2.0) + ((img2.shape[1] / 2.0) ** 2.0))
+            polar_image = cv2.warpPolar(img2,img2.shape, (img2.shape[0] / 2, img2.shape[1] / 2), 800, cv2.WARP_FILL_OUTLIERS)
+            polar_image = polar_image.astype(np.uint8)
+            img = polar_image
+            '''
             overlay = Image.fromarray((img*255).astype('uint8'))
             background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
             background = background[:, :, 0] / np.max(background[:, :, 0])
+
+            img2 = background.astype(np.float32)
+            # --- the following holds the square root of the sum of squares of the image dimensions ---
+            # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
+            value = np.sqrt(((img2.shape[0] / 2.0) ** 2.0) + ((img2.shape[1] / 2.0) ** 2.0))
+            polar_image = cv2.linearPolar(img2, (img2.shape[0] / 2, img2.shape[1] / 2), value, cv2.WARP_FILL_OUTLIERS)
+            # polar_image = polar_image.astype(np.uint8)
+            background = polar_image
+
             background = Image.fromarray((background * 255).astype('uint8'))
             background = background.convert("RGBA")
             overlay = overlay.convert("RGBA")
@@ -336,7 +355,7 @@ def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_fr
 
             new_img = Image.blend(background, overlay, 0.3)
             # new_img = background
-            new_img.save(os.path.join(save_path, 'image_' + all_frames[i][6:16] + 'png'), "PNG")
+            new_img.save(os.path.join(overlay_path, 'image_' + all_frames[i][6:16] + 'png'), "PNG")
     else:
         for i, item in enumerate(npyfile):
             img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, 0]
@@ -495,7 +514,7 @@ class DataGenerator2(Sequence):
         polar_image = self.polar(img)
         polar_image = polar_image.astype(np.uint8)
         img=polar_image
-        
+
 
         img = np.expand_dims(img, axis=2)
 

@@ -11,7 +11,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]=""
 print(tensorflow.test.is_built_with_cuda())
 print(tensorflow.test.gpu_device_name())
 
-data_gen_args = dict(shear_range=10,
+data_gen_args_dict = dict(shear_range=10,
                     rotation_range=20,
                     horizontal_flip=True,
                     width_shift_range=0.3,
@@ -26,8 +26,9 @@ validation_masks_path = 'C:/fasciafilled/val_masks'
 test_masks_path = "C:/fasciafilled/test_masks"
 
 all_frames = os.listdir(train_images_path)
-gen = DataGenerator(all_frames, train_images_path, train_masks_path, to_fit=True,
-                    batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)
+gen = DataGenerator(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)
+#Datagenerator2 includes the augmentation
+#gen = DataGenerator2(all_frames, train_images_path, train_masks_path, to_fit=True, batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True, data_gen_args=data_gen_args_dict)
 '''
 for i in gen:
   #pydicom.dcmread(gen(i))
@@ -51,11 +52,20 @@ testGene = DataGenerator(all_frames, test_images_path,
 
 model = unet(pretrained_weights="unet_ThighOuterSurface.hdf5")
 
+'''
+results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
+saveResult("C:/results", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay')
+#print accuracy and validation loss
+loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
+print(loss)
+print(acc)
+'''
+
 #uncomment the next section to train the network
 
 model_checkpoint = ModelCheckpoint('unet_ThighOuterSurfaceval.hdf5', monitor='val_loss', verbose=1, save_best_only=True)
 model_checkpoint2 = ModelCheckpoint('unet_ThighOuterSurface.hdf5', monitor='loss', verbose=1, save_best_only=True)
-history = model.fit_generator(gen, validation_data=genAug, validation_steps=205, steps_per_epoch=720, epochs=300,
+history = model.fit_generator(gen, validation_data=genAug, validation_steps=200, steps_per_epoch=500, epochs=300,
                               callbacks=[model_checkpoint,
                                          model_checkpoint2])
 
