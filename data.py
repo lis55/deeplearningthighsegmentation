@@ -10,6 +10,7 @@ import vtk
 from vtk.util import numpy_support
 from PIL import Image
 from keras.preprocessing.image import ImageDataGenerator
+import matplotlib.pyplot as plt
 Sky = [128,128,128]
 Building = [128,0,0]
 Pole = [192,192,128]
@@ -225,7 +226,7 @@ class DataGenerator(Sequence):
         img = load_dicom(image_path)
         img = img / np.max(img)
 
-        self.polar(img)
+        #self.polar(img)
 
         return img
 
@@ -251,7 +252,7 @@ class DataGenerator(Sequence):
         img = img / np.amax(img)
         img = img.astype('float32')
 
-        self.polar(img)
+        #self.polar(img)
 
         return img
 
@@ -331,15 +332,6 @@ def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_fr
             overlay = Image.fromarray((img*255).astype('uint8'))
             background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
             background = background[:, :, 0] / np.max(background[:, :, 0])
-
-            img2 = background.astype(np.float32)
-            # --- the following holds the square root of the sum of squares of the image dimensions ---
-            # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
-            value = np.sqrt(((img2.shape[0] / 2.0) ** 2.0) + ((img2.shape[1] / 2.0) ** 2.0))
-            polar_image = cv2.linearPolar(img2, (img2.shape[0] / 2, img2.shape[1] / 2), value, cv2.WARP_FILL_OUTLIERS)
-            # polar_image = polar_image.astype(np.uint8)
-            background = polar_image
-
             background = Image.fromarray((background * 255).astype('uint8'))
             background = background.convert("RGBA")
             overlay = overlay.convert("RGBA")
@@ -494,7 +486,7 @@ class DataGenerator2(Sequence):
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
             # Store sample
-            y[i,] = self._load_grayscale_image(self.mask_path + '/' + 'label_' + ID[6:15] + '.png')
+            y[i,] = self._load_grayscale_image_VTK(self.mask_path + '/' + 'label_' + ID[6:15] + '.png')
             if self.bool:
                 y[i,] = self.trans.apply_transform(y[i,], self.param)
 
@@ -511,12 +503,9 @@ class DataGenerator2(Sequence):
         img = img / 255
 
         # comment if polar transformation is not wanted
-        polar_image = self.polar(img)
-        polar_image = polar_image.astype(np.uint8)
-        img=polar_image
-
-
-        img = np.expand_dims(img, axis=2)
+        #polar_image = self.polar(img)
+        #polar_image = polar_image.astype(np.uint8)
+        #img=polar_image
 
         return img
 
@@ -529,9 +518,8 @@ class DataGenerator2(Sequence):
         img = img / np.max(img)
 
         #comment if polar transformation is not wanted
-        img = self.polar(img)
+        #img = self.polar(img)
 
-        img = np.expand_dims(img, axis=2)
         return img
 
     def _load_grayscale_image_VTK(self, image_path):
@@ -555,6 +543,10 @@ class DataGenerator2(Sequence):
 
         img = img / np.amax(img)
         img = img.astype('float32')
+
+        # comment if polar transformation is not wanted
+        img = self.polar(img)
+
         return img
 
     def polar(self,img):
@@ -569,6 +561,21 @@ class DataGenerator2(Sequence):
         #polar_image = polar_image.astype(np.uint8)
         img = polar_image
 
+        img = np.expand_dims(img, axis=2)
+
         return img
+
+def plotFromGenerator(gen):
+    for i in gen:
+      #pydicom.dcmread(gen(i))
+      print(len(i))
+
+      plt.imshow((i[0][0,:,:,0]),cmap=plt.cm.bone)
+      plt.imsave("dicom.png", i[0][0, :, :, 0])
+      plt.show()
+      plt.imshow((i[1][0,:,:,0]),cmap=plt.cm.bone)
+      plt.imsave("dicomlabel.png",i[1][0,:,:,0])
+      plt.show()
+
 
 

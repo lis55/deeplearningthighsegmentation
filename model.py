@@ -61,6 +61,7 @@ def unet(pretrained_weights=None, input_size=(512, 512, 1)):
 
     # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
     model.compile(optimizer=Adam(lr=1e-4), loss=dice_loss, metrics=['accuracy'])
+    #model.compile(optimizer=Adam(lr=1e-4), loss=dice_loss, metrics=dice_loss)
     # model.compile(optimizer=Adam(lr=1e-5), loss=FocalLoss, metrics=[tf.keras.metrics.MeanIoU(num_classes=2)])
     # model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy(0.5), metrics=['accuracy'])
 

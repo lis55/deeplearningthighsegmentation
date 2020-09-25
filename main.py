@@ -2,7 +2,7 @@ from data import *
 from model import *
 import tensorflow
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
+
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
@@ -20,27 +20,19 @@ data_gen_args_dict = dict(shear_range=10,
 
 train_images_path = 'C:/fasciafilled/train_frames'
 validation_images_path = 'C:/fasciafilled/val_frames'
-test_images_path = "C:/fasciafilled/test_frames"
+test_images_path = "G:/DL_test_dataset_other_studies/elderly_men/images"
 train_masks_path = 'C:/fasciafilled/train_masks'
 validation_masks_path = 'C:/fasciafilled/val_masks'
-test_masks_path = "C:/fasciafilled/test_masks"
+test_masks_path = "G:/DL_test_dataset_other_studies/elderly_men/FASCIA_FINAL"
 
 all_frames = os.listdir(train_images_path)
 gen = DataGenerator(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)
+
 #Datagenerator2 includes the augmentation
 #gen = DataGenerator2(all_frames, train_images_path, train_masks_path, to_fit=True, batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True, data_gen_args=data_gen_args_dict)
-'''
-for i in gen:
-  #pydicom.dcmread(gen(i))
-  print(len(i))
 
-  plt.imshow((i[0][0,:,:,0]),cmap=plt.cm.bone)
-  plt.imsave("dicom.png", i[0][0, :, :, 0])
-  plt.show()
-  plt.imshow((i[1][0,:,:,0]),cmap=plt.cm.bone)
-  plt.imsave("dicomlabel.png",i[1][0,:,:,0])
-  plt.show()
-'''
+#plotFromGenerator(gen)
+
 all_frames = os.listdir(validation_images_path)
 genAug = DataGenerator(all_frames, validation_images_path, validation_masks_path, to_fit=True, batch_size=2,
                        dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)
@@ -50,16 +42,15 @@ testGene = DataGenerator(all_frames, test_images_path,
                          dim=(512, 512), n_channels=1, n_classes=1, shuffle=False)
 
 
-model = unet(pretrained_weights="unet_ThighOuterSurface.hdf5")
+model = unet(pretrained_weights="C:/Users/lis/PycharmProjects/deeplearningMRIsegmentation/unet_ThighOuterSurface.hdf5")
 
-'''
+
 results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
 saveResult("C:/results", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay')
 #print accuracy and validation loss
 loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
 print(loss)
 print(acc)
-'''
 
 #uncomment the next section to train the network
 
