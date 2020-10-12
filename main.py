@@ -56,9 +56,7 @@ print(acc)
 
 model_checkpoint = ModelCheckpoint('unet_ThighOuterSurfaceval.hdf5', monitor='val_loss', verbose=1, save_best_only=True)
 model_checkpoint2 = ModelCheckpoint('unet_ThighOuterSurface.hdf5', monitor='loss', verbose=1, save_best_only=True)
-history = model.fit_generator(gen, validation_data=genAug, validation_steps=200, steps_per_epoch=500, epochs=300,
-                              callbacks=[model_checkpoint,
-                                         model_checkpoint2])
+history = model.fit_generator(gen, validation_data=genAug, validation_steps=200, steps_per_epoch=500, epochs=300, callbacks=[model_checkpoint, model_checkpoint2])
 
 print(history.history.keys())
 plt.figure()

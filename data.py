@@ -11,6 +11,8 @@ from vtk.util import numpy_support
 from PIL import Image
 from keras.preprocessing.image import ImageDataGenerator
 import matplotlib.pyplot as plt
+import SimpleITK as sitk
+
 Sky = [128,128,128]
 Building = [128,0,0]
 Pole = [192,192,128]
@@ -127,6 +129,8 @@ class DataGenerator(Sequence):
         self.n_classes = n_classes
         self.shuffle = shuffle
         self.on_epoch_end()
+        self.n = 0
+        self.max = self.__len__()
 
     def __len__(self):
         """Denotes the number of batches per epoch
@@ -143,6 +147,7 @@ class DataGenerator(Sequence):
         indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
 
         # Find list of IDs
+
         list_IDs_temp = [self.list_IDs[k] for k in indexes]
 
         # Generate data
@@ -249,7 +254,7 @@ class DataGenerator(Sequence):
         img = vtk.util.numpy_support.vtk_to_numpy(vtkarray)
         img = img.reshape(ConstPixelDims, order='F')
 
-        img = img / np.amax(img)
+        img = img / np.max(img)
         img = img.astype('float32')
 
         #self.polar(img)
@@ -299,7 +304,7 @@ def load_dicom(foldername, doflipz = True):
     ArrayDicom = ArrayDicom.reshape(ConstPixelDims, order='F')
 
 
-    return (ArrayDicom)
+    return ArrayDicom
 
 def labelVisualize(num_class,color_dict,img):
     img = img[:,:,0] if len(img.shape) == 3 else img
@@ -353,6 +358,8 @@ def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_fr
             img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, 0]
             # io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
             io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4] + ".png"), img)
+
+
 
 def overlay(save_path, image_path, mask_path):
     all_frames = os.listdir(image_path)
@@ -450,6 +457,7 @@ class DataGenerator2(Sequence):
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
+
     def _generate_X(self, list_IDs_temp):
         """Generates data containing batch_size images
         :param list_IDs_temp: list of label ids to load
@@ -499,8 +507,10 @@ class DataGenerator2(Sequence):
         """
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.flip(img, 0)
-        img = img / 255
+        #img = cv2.flip(img, 2)
+        img=cv2.rotate(img, cv2.cv2.ROTATE_90_CLOCKWISE)
+        #img = img / 255
+        img = np.expand_dims(img,axis=2)
 
         # comment if polar transformation is not wanted
         #polar_image = self.polar(img)
@@ -541,11 +551,11 @@ class DataGenerator2(Sequence):
         img = vtk.util.numpy_support.vtk_to_numpy(vtkarray)
         img = img.reshape(ConstPixelDims, order='F')
 
-        img = img / np.amax(img)
+        img = img / np.max(img)
         img = img.astype('float32')
 
         # comment if polar transformation is not wanted
-        img = self.polar(img)
+        #img = self.polar(img)
 
         return img
 
@@ -565,6 +575,21 @@ class DataGenerator2(Sequence):
 
         return img
 
+    def downsample(self,dim,path):
+        ids = os.listdir(self.mask_path)
+        for i in ids:
+            img = self._load_grayscale_image(self.mask_path + '/' + i)[:, :, 0]
+            img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+            #img = img.astype(np.int8)
+            cv2.imwrite(path+'/'+'mask'+'/'+i, img)
+        ids=os.listdir(self.image_path)
+        for i in ids:
+            img = self._load_dicom_image(self.image_path+'/'+i)[:,:,0]
+            img = cv2.resize(img,dim,interpolation=cv2.INTER_AREA)
+            img = (img*255).astype(np.int16)
+            cv2.imwrite(path+'/'+'image'+'/'+i[:-3]+'png', img)
+
+
 def plotFromGenerator(gen):
     for i in gen:
       #pydicom.dcmread(gen(i))
@@ -576,6 +601,177 @@ def plotFromGenerator(gen):
       plt.imshow((i[1][0,:,:,0]),cmap=plt.cm.bone)
       plt.imsave("dicomlabel.png",i[1][0,:,:,0])
       plt.show()
+
+def generator3d(listOfIds, listOfIds2, image_path, mask_path,dim,slices):
+        X = np.empty((*dim,slices))
+        y = np.empty((*dim,slices))
+        # Generate data
+        for ID in listOfIds:
+            slicesIds = os.listdir(image_path + '/' + ID)
+            # Store sample
+            for i,IDs in enumerate(slicesIds):
+                img = load_dicom(image_path + '/' + ID +'/'+ IDs)[:,:,0]
+                img2=cv2.resize(img,(128,128),interpolation=cv2.INTER_AREA )
+                #X[i,] = load_dicom(image_path + '/' + ID +'/'+ IDs)
+                X[:,:,i] = np.expand_dims(img2, axis=2)
+
+        for ID in listOfIds2:
+            slicesIds2 = os.listdir(mask_path + '/' + ID)
+            # Store sample
+            for i,IDs in enumerate(slicesIds2):
+                img = load_grayscale_image_VTK(mask_path + '/' + ID + '/' + IDs)[:,:,0]
+                img2=cv2.resize(img,(128,128),interpolation=cv2.INTER_AREA )
+                y[:,:,i] = np.expand_dims(img2, axis=2)
+                #Y[i,] = load_grayscale_image_VTK(mask_path + '/' + ID + '/' + IDs)
+
+            yield X,y
+class gen3d(DataGenerator):
+    def _generate_y(self, list_IDs_temp):
+        """Generates data containing batch_size images
+        :param list_IDs_temp: list of label ids to load
+        :return: batch of images
+        """
+        # Initialization
+        #Y = np.empty((1,1,*self.dim,28))
+        Y = np.zeros((1, *self.dim, 8, 1))
+        # Generate data
+        for ID in list_IDs_temp:
+            slicesIds2 = os.listdir(self.mask_path + '/' + ID)
+            # Store sample
+            for i,IDs in enumerate(slicesIds2[0:8]):
+                img = self._load_grayscale_image_VTK(self.mask_path + '/' + ID + '/' + IDs)[:,:,0]
+                Y[0,:,:,i,0] = img
+
+        return Y
+
+    def _generate_X(self, list_IDs_temp):
+        """Generates data containing batch_size images
+        :param list_IDs_temp: list of label ids to load
+        :return: batch of images
+        """
+        # Initialization
+        X = np.zeros((1,*self.dim,8,1))
+        # Generate data
+        for ID in list_IDs_temp:
+            slicesIds2 = os.listdir(self.image_path + '/' + ID)
+            # Store sample
+            for i,IDs in enumerate(slicesIds2[0:8]):
+                img = load_grayscale_image_VTK(self.image_path + '/' + ID + '/' + IDs)[:,:,0]
+                X[0,:,:,i,0] = img
+        return X
+
+    def __next__(self):
+        if self.n >= self.max:
+            self.n = 0
+        result = self.__getitem__(self.n)
+        self.n += 1
+        return result
+
+
+def load_grayscale_image_VTK( image_path):
+    """Load grayscale image
+    :param image_path: path to image to load
+    :return: loaded image
+    """
+    img = vtk.vtkPNGReader()
+    img.SetFileName(os.path.normpath(image_path))
+    img.Update()
+
+
+    _extent = img.GetDataExtent()
+    ConstPixelDims = [_extent[1]-_extent[0]+1, _extent[3]-_extent[2]+1, _extent[5]-_extent[4]+1]
+
+    img_data = img.GetOutput()
+    datapointer = img_data.GetPointData()
+    assert (datapointer.GetNumberOfArrays()==1)
+    vtkarray = datapointer.GetArray(0)
+    img = vtk.util.numpy_support.vtk_to_numpy(vtkarray)
+    img = img.reshape(ConstPixelDims, order='F')
+
+    img = img / np.amax(img)
+    img = img.astype('float32')
+
+    #self.polar(img)
+
+    return img
+
+
+def load_mhd(filename):
+    ##ImageDataGenerator expects (z,x,y) order of array
+    itk_image = sitk.ReadImage(filename, sitk.sitkFloat32)
+    np_array = sitk.GetArrayFromImage(itk_image)
+    ##change order of dimensions to (x,y,z)
+    # np_array = np.moveaxis(np_array, 0, -1)
+
+    return (np_array)
+
+
+
+
+def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_frames_path=None, overlay=False, overlay_path=None):
+    '''
+    for i,item in enumerate(npyfile):
+        img = labelVisualize(num_class,COLOR_DICT,item) if flag_multi_class else item[:,:,0]
+        #io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
+        io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4]+".png"), img)
+    '''
+    all_frames = os.listdir(test_frames_path)
+    if overlay:
+        all_frames = os.listdir(test_frames_path)
+        for i, item in enumerate(npyfile):
+            for j in range(0, np.shape(npyfile)[2]):
+                img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, j,0]
+                io.imsave(os.path.join(save_path, os.listdir(test_frames_path+'/'+str(j))[i] + ".png"), img)
+                '''
+                img2 = img.astype(np.float32)
+                # --- the following holds the square root of the sum of squares of the image dimensions ---
+                # --- this is done so that the entire width/height of the original image is used to express the complete circular range of the resulting polar image ---
+                value = np.sqrt(((img2.shape[0] / 2.0) ** 2.0) + ((img2.shape[1] / 2.0) ** 2.0))
+                polar_image = cv2.warpPolar(img2,img2.shape, (img2.shape[0] / 2, img2.shape[1] / 2), 800, cv2.WARP_FILL_OUTLIERS)
+                polar_image = polar_image.astype(np.uint8)
+                img = polar_image
+                '''
+                overlay = Image.fromarray((img*255).astype('uint8'))
+                background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
+                background = background[:, :, 0] / np.max(background[:, :, 0])
+                background = Image.fromarray((background * 255).astype('uint8'))
+                background = background.convert("RGBA")
+                overlay = overlay.convert("RGBA")
+
+                # Split into 3 channels
+                r, g, b, a = overlay.split()
+
+                # Increase Reds
+                g = b.point(lambda i: i * 0)
+
+                # Recombine back to RGB image
+                overlay = Image.merge('RGBA', (r, g, b, a))
+
+                new_img = Image.blend(background, overlay, 0.3)
+                # new_img = background
+                new_img.save(os.path.join(overlay_path, 'image_' + all_frames[i][6:16] + 'png'), "PNG")
+    else:
+        for i, item in enumerate(npyfile):
+            slices_path = os.listdir(test_frames_path + '/' + all_frames[i])
+            for j in range(0, np.shape(npyfile)[3]):
+                print(slices_path[j])
+                img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, j,0]
+                io.imsave(os.path.join(save_path, slices_path[j][:-4]+ ".png"), img)
+                # io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
+                #io.imsave(os.path.join(save_path, os.listdir(test_frames_path+'/'+str(j+1))[i] + ".png"), img)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
