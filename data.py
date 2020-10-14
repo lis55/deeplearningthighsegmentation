@@ -635,13 +635,14 @@ class gen3d(DataGenerator):
         #Y = np.empty((1,1,*self.dim,28))
         Y = np.zeros((1, *self.dim, 8, 1))
         # Generate data
+
+
         for ID in list_IDs_temp:
             slicesIds2 = os.listdir(self.mask_path + '/' + ID)
             # Store sample
-            for i,IDs in enumerate(slicesIds2[0:8]):
+            for i,IDs in enumerate(slicesIds2[::3][:-2]):
                 img = self._load_grayscale_image_VTK(self.mask_path + '/' + ID + '/' + IDs)[:,:,0]
                 Y[0,:,:,i,0] = img
-
         return Y
 
     def _generate_X(self, list_IDs_temp):
@@ -655,7 +656,7 @@ class gen3d(DataGenerator):
         for ID in list_IDs_temp:
             slicesIds2 = os.listdir(self.image_path + '/' + ID)
             # Store sample
-            for i,IDs in enumerate(slicesIds2[0:8]):
+            for i,IDs in enumerate(slicesIds2[::3][:-2]):
                 img = load_grayscale_image_VTK(self.image_path + '/' + ID + '/' + IDs)[:,:,0]
                 X[0,:,:,i,0] = img
         return X
@@ -719,9 +720,12 @@ def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_
     if overlay:
         all_frames = os.listdir(test_frames_path)
         for i, item in enumerate(npyfile):
-            for j in range(0, np.shape(npyfile)[2]):
+            slices_path = os.listdir(test_frames_path + '/' + all_frames[i])
+            for j in range(0, np.shape(npyfile)[3]):
+                print(slices_path[j])
                 img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, j,0]
-                io.imsave(os.path.join(save_path, os.listdir(test_frames_path+'/'+str(j))[i] + ".png"), img)
+                #img = cv2.resize(img, (512,512), interpolation=cv2.INTER_CUBIC)
+                io.imsave(os.path.join(save_path, slices_path[j][:-4]+ ".png"), img)
                 '''
                 img2 = img.astype(np.float32)
                 # --- the following holds the square root of the sum of squares of the image dimensions ---
@@ -732,7 +736,13 @@ def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_
                 img = polar_image
                 '''
                 overlay = Image.fromarray((img*255).astype('uint8'))
-                background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
+
+
+                #background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
+
+                imagepath = os.path.join(test_frames_path, all_frames[i])+'/'+slices_path[j]
+                #background = load_dicom(imagepath)
+                background = load_grayscale_image_VTK(imagepath)
                 background = background[:, :, 0] / np.max(background[:, :, 0])
                 background = Image.fromarray((background * 255).astype('uint8'))
                 background = background.convert("RGBA")
@@ -749,7 +759,7 @@ def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_
 
                 new_img = Image.blend(background, overlay, 0.3)
                 # new_img = background
-                new_img.save(os.path.join(overlay_path, 'image_' + all_frames[i][6:16] + 'png'), "PNG")
+                new_img.save(os.path.join(overlay_path, slices_path[j][:-4]+ ".png"), "PNG")
     else:
         for i, item in enumerate(npyfile):
             slices_path = os.listdir(test_frames_path + '/' + all_frames[i])

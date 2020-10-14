@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
+
 '''
 DATA_PATH = 'C:/Users/lis/Desktop/downsize/image'
 all_masks = os.listdir(DATA_PATH)
@@ -68,6 +69,7 @@ print('The information of the data set after downsampling: \n')
 print(ds)'''
 
 
+
 train_images_path = 'C:/fascia3dsmol/train/images'
 train_masks_path = 'C:/fascia3dsmol/train/masks'
 all_frames = os.listdir('C:/fascia3dsmol/train/images')
@@ -82,19 +84,27 @@ train_masks_path = 'C:/fascia3dsmol/val/masks'
 all_frames = os.listdir('C:/fascia3dsmol/val/images')
 genAug = gen3d(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True)
 
-train_images_path = 'C:/fascia3dsmol/test/images'
-train_masks_path = 'C:/fascia3dsmol/test/masks'
+test_images_path = 'C:/fascia3dsmol/test/images'
+test_masks_path = 'C:/fascia3dsmol/test/masks'
 all_frames = os.listdir('C:/fascia3dsmol/test/images')
-testGene = gen3d(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True)
+testGene = gen3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True)
+
+'''
+test_images_path = 'C:/elderlywomen3d/images'
+train_images_path = 'C:/elderlywomen3d/images'
+train_masks_path = 'C:/elderlywomen3d/masks'
+all_frames = os.listdir('C:/elderlywomen3d/images')
+testGene = gen3d(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=1, dim=(128,128), n_channels=1, n_classes=1, shuffle=True)
+'''
 
 
 model = unet3d(pretrained_weights=None, input_size=(128, 128,8, 1))
 
 #model = unet(input_size=(128, 128, 28))
 
-#model_checkpoint = ModelCheckpoint('unet_ThighOuterSurfaceval.hdf5', monitor='val_loss', verbose=1, save_best_only=True)
+model_checkpoint = ModelCheckpoint('unet_ThighOuterSurfaceval.hdf5', monitor='val_loss', verbose=1, save_best_only=True)
 model_checkpoint2 = ModelCheckpoint('unet_ThighOuterSurface.hdf5', monitor='loss', verbose=1, save_best_only=True)
-history = model.fit_generator(generator=gen, validation_data=genAug, validation_steps=7, steps_per_epoch=59, epochs=300, callbacks=[model_checkpoint2])
+history = model.fit_generator(generator=gen, validation_data=genAug, validation_steps=7, steps_per_epoch=59, epochs=600, callbacks=[model_checkpoint2,model_checkpoint])
 
 print(history.history.keys())
 plt.figure()
@@ -125,7 +135,7 @@ for i in gen:
 model = unet3d(pretrained_weights='unet_ThighOuterSurface.hdf5', input_size=(128, 128,8, 1))
 test_images_path = 'C:/fascia3dsmol/test/images'
 results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
-saveResult("C:/results3d", results, test_frames_path=test_images_path,overlay=False,overlay_path='C:/resultsoverlay')
+saveResult3d("C:/results3d", results, test_frames_path=test_images_path,overlay=False,overlay_path='C:/resultsoverlay')
 #print accuracy and validation loss
 loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
 print(loss)
