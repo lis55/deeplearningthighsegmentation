@@ -418,6 +418,8 @@ class DataGenerator2(Sequence):
         self.n_classes = n_classes
         self.shuffle = shuffle
         self.on_epoch_end()
+        self.n = 0
+        self.max = self.__len__()
 
         self.bool = False
 
@@ -591,17 +593,38 @@ class DataGenerator2(Sequence):
 
 
 def plotFromGenerator(gen):
+    count=0
     for i in gen:
       #pydicom.dcmread(gen(i))
-      print(len(i))
+      for k in range(0,np.shape(i[0])[3]):
+          background = i[0][0,:,:,k]
+          background = background/ np.max(background)
+          background = (background[:,:,0] * 255).astype('uint8')
+          background = Image.fromarray(background)
+          background = background.convert("RGBA")
+          img = i[1][0,:,:,k]
+          overlay = Image.fromarray((img[:,:,0] * 255).astype('uint8'))
+          overlay = overlay.convert("RGBA")
 
-      plt.imshow((i[0][0,:,:,0]),cmap=plt.cm.bone)
-      plt.imsave("dicom.png", i[0][0, :, :, 0])
-      plt.show()
-      plt.imshow((i[1][0,:,:,0]),cmap=plt.cm.bone)
-      plt.imsave("dicomlabel.png",i[1][0,:,:,0])
-      plt.show()
+          # Split into 3 channels
+          r, g, b, a = overlay.split()
 
+          # Increase Reds
+          g = b.point(lambda i: i * 0)
+
+          # Recombine back to RGB image
+          overlay = Image.merge('RGBA', (r, g, b, a))
+          new_img = Image.blend(background, overlay, 0.3)
+          new_img.save(str(count)+ ".png", "PNG")
+          count +=1
+          '''  
+          plt.imshow(new_img ,cmap=plt.cm.bone)
+          plt.imsave("dicom.png", i[0][0, :, :, 0])
+          plt.show()
+          plt.imshow((i[1][0,:,:,0]),cmap=plt.cm.bone)
+          plt.imsave("dicomlabel.png",i[1][0,:,:,0])
+          plt.show()
+          '''
 def generator3d(listOfIds, listOfIds2, image_path, mask_path,dim,slices):
         X = np.empty((*dim,slices))
         y = np.empty((*dim,slices))
@@ -625,6 +648,62 @@ def generator3d(listOfIds, listOfIds2, image_path, mask_path,dim,slices):
                 #Y[i,] = load_grayscale_image_VTK(mask_path + '/' + ID + '/' + IDs)
 
             yield X,y
+
+
+class gen3da(DataGenerator2):
+    def _generate_y(self, list_IDs_temp):
+        """Generates data containing batch_size images
+        :param list_IDs_temp: list of label ids to load
+        :return: batch of images
+        """
+        # Initialization
+        #Y = np.empty((1,1,*self.dim,28))
+        Y = np.zeros((1, *self.dim, 8, 1))
+        # Generate data
+
+
+        for ID in list_IDs_temp:
+            slicesIds2 = os.listdir(self.mask_path + '/' + ID)
+            # Store sample
+            for i,IDs in enumerate(slicesIds2[::3][:-2]):
+                img = self._load_grayscale_image_VTK(self.mask_path + '/' + ID + '/' + IDs)[:,:,0]
+                Y[0,:,:,i,0] = img
+                if self.bool:
+                    Y[0,:,:,i,:] = self.trans.apply_transform(Y[0,:,:,i,:], self.param)
+        return Y
+
+    def _generate_X(self, list_IDs_temp):
+        """Generates data containing batch_size images
+        :param list_IDs_temp: list of label ids to load
+        :return: batch of images
+        """
+        # Initialization
+        X = np.zeros((1,*self.dim,8,1))
+
+        self.param = self.trans.get_random_transform(self.dim)
+
+        if random.uniform(0,1) >= 0.5:
+            self.bool = True
+        else:
+            self.bool = False
+        # Generate data
+        for ID in list_IDs_temp:
+            slicesIds2 = os.listdir(self.image_path + '/' + ID)
+            # Store sample
+            for i,IDs in enumerate(slicesIds2[::3][:-2]):
+                img = load_grayscale_image_VTK(self.image_path + '/' + ID + '/' + IDs)[:,:,0]
+                X[0,:,:,i,0] = img
+                if self.bool:
+                    X[0,:,:,i,:] = self.trans.apply_transform(X[0,:,:,i,:], self.param)
+        return X
+
+    def __next__(self):
+        if self.n >= self.max:
+            self.n = 0
+        result = self.__getitem__(self.n)
+        self.n += 1
+        return result
+
 class gen3d(DataGenerator):
     def _generate_y(self, list_IDs_temp):
         """Generates data containing batch_size images
@@ -652,6 +731,7 @@ class gen3d(DataGenerator):
         """
         # Initialization
         X = np.zeros((1,*self.dim,8,1))
+
         # Generate data
         for ID in list_IDs_temp:
             slicesIds2 = os.listdir(self.image_path + '/' + ID)
@@ -708,7 +788,6 @@ def load_mhd(filename):
 
 
 
-
 def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_frames_path=None, overlay=False, overlay_path=None):
     '''
     for i,item in enumerate(npyfile):
@@ -717,15 +796,16 @@ def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_
         io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4]+".png"), img)
     '''
     all_frames = os.listdir(test_frames_path)
+    remove = 2
     if overlay:
         all_frames = os.listdir(test_frames_path)
         for i, item in enumerate(npyfile):
             slices_path = os.listdir(test_frames_path + '/' + all_frames[i])
             for j in range(0, np.shape(npyfile)[3]):
-                print(slices_path[j])
+                slices = slices_path[::3][:-remove]
                 img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, j,0]
                 #img = cv2.resize(img, (512,512), interpolation=cv2.INTER_CUBIC)
-                io.imsave(os.path.join(save_path, slices_path[j][:-4]+ ".png"), img)
+                io.imsave(os.path.join(save_path, slices[j][:-4]+ ".png"), img)
                 '''
                 img2 = img.astype(np.float32)
                 # --- the following holds the square root of the sum of squares of the image dimensions ---
@@ -740,7 +820,7 @@ def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_
 
                 #background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
 
-                imagepath = os.path.join(test_frames_path, all_frames[i])+'/'+slices_path[j]
+                imagepath = os.path.join(test_frames_path, all_frames[i])+'/'+slices[j]
                 #background = load_dicom(imagepath)
                 background = load_grayscale_image_VTK(imagepath)
                 background = background[:, :, 0] / np.max(background[:, :, 0])
@@ -759,17 +839,14 @@ def saveResult3d(save_path,npyfile,flag_multi_class = False,num_class = 2, test_
 
                 new_img = Image.blend(background, overlay, 0.3)
                 # new_img = background
-                new_img.save(os.path.join(overlay_path, slices_path[j][:-4]+ ".png"), "PNG")
+                new_img.save(os.path.join(overlay_path, slices[j][:-4]+ ".png"), "PNG")
     else:
         for i, item in enumerate(npyfile):
             slices_path = os.listdir(test_frames_path + '/' + all_frames[i])
             for j in range(0, np.shape(npyfile)[3]):
-                print(slices_path[j])
+                slices = slices_path[::3][:-remove]
                 img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, j,0]
-                io.imsave(os.path.join(save_path, slices_path[j][:-4]+ ".png"), img)
-                # io.imsave(os.path.join(save_path,"%d_predict.png"%i),img)
-                #io.imsave(os.path.join(save_path, os.listdir(test_frames_path+'/'+str(j+1))[i] + ".png"), img)
-
+                io.imsave(os.path.join(save_path, slices[j][:-4]+ ".png"), img)
 
 
 
