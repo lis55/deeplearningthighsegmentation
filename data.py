@@ -921,7 +921,7 @@ class gen3d(DataGenerator):
         return result
 
 
-def load_grayscale_image_VTK( image_path):
+def load_grayscale_image_VTK(image_path):
     """Load grayscale image
     :param image_path: path to image to load
     :return: loaded image
@@ -941,7 +941,7 @@ def load_grayscale_image_VTK( image_path):
     img = vtk.util.numpy_support.vtk_to_numpy(vtkarray)
     img = img.reshape(ConstPixelDims, order='F')
 
-    img = img / np.amax(img)
+    img = img / np.max(img)
     img = img.astype('float32')
 
     #self.polar(img)
@@ -1005,7 +1005,7 @@ def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_fr
             io.imsave(os.path.join(save_path, os.listdir(test_frames_path)[i][:-4] + ".png"), img)
 
 
-def saveResult3d(save_path,npyfile, patch_size =8, flag_multi_class = False,num_class = 2, test_frames_path=None):
+def saveResult3dd(save_path,npyfile, patch_size =8, flag_multi_class = False,num_class = 2, test_frames_path=None):
     '''
     for i,item in enumerate(npyfile):
         img = labelVisualize(num_class,COLOR_DICT,item) if flag_multi_class else item[:,:,0]
@@ -1014,20 +1014,20 @@ def saveResult3d(save_path,npyfile, patch_size =8, flag_multi_class = False,num_
     '''
     all_frames = os.listdir(test_frames_path)
     count = 0
-    data = []
-    number_of_patches = os.listdir(test_frames_path + '/' + all_frames[0])/patch_size
+    test_data = []
+    number_of_patches = np.floor(len(os.listdir(test_frames_path + '/' + all_frames[0])) / patch_size)
     for i, ID in enumerate(all_frames):
         slices = os.listdir(os.path.join(test_frames_path, ID))
         while count < number_of_patches:
             patch = slices[(count * patch_size):((count + 1) * patch_size)]
-            data.append([ID, patch])
+            test_data.append([ID, patch])
             count += 1
         count = 0
 
     for j,item in enumerate(npyfile):
-        for i in range(0,np.shape(npyfile)[3])
+        for i in range(0,np.shape(npyfile)[3]):
             img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, i,0]
-            io.imsave(os.path.join(save_path, slices[j][:-4] + ".png"), img)
+            io.imsave(os.path.join(save_path, test_data[j][1][i][:-4] + ".png"), img)
 
 
 def saveResult3d(save_path, npyfile, patch_size=8, flag_multi_class=False, num_class=2, test_frames_path=None, overlay_path=None):
@@ -1040,7 +1040,7 @@ def saveResult3d(save_path, npyfile, patch_size=8, flag_multi_class=False, num_c
     all_frames = os.listdir(test_frames_path)
     count = 0
     test_data = []
-    number_of_patches = os.listdir(test_frames_path + '/' + all_frames[0]) / patch_size
+    number_of_patches = np.floor(len(os.listdir(test_frames_path + '/' + all_frames[0])) / patch_size)
     for i, ID in enumerate(all_frames):
         slices = os.listdir(os.path.join(test_frames_path, ID))
         while count < number_of_patches:
@@ -1048,16 +1048,39 @@ def saveResult3d(save_path, npyfile, patch_size=8, flag_multi_class=False, num_c
             test_data.append([ID, patch])
             count += 1
         count = 0
+    for j,item in enumerate(npyfile):
+        for i in range(0,np.shape(npyfile)[3]):
+            img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, i,0]
+            io.imsave(os.path.join(save_path, test_data[j][1][i][:-4] + ".png"), img)
+            imagepath = test_frames_path + '/' + test_data[j][0] + '/' + test_data[j][1][i]
+            background = load_grayscale_image_VTK(imagepath)
+            path = os.path.join(overlay_path, test_data[j][1][i][:-4] + '.png')
+            overlay3d(background, img).save(path, "PNG")
 
-    for j, item in enumerate(npyfile):
-        for i in range(0, np.shape(npyfile)[3]):
-            for ID in test_data[j][1]:
-                img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, i, 0]
-                io.imsave(os.path.join(save_path, slices[j][:-4] + ".png"), img)
-                imagepath = test_data[j][0]+'/'+ ID
-                background = load_grayscale_image_VTK(imagepath)
-                overlay(overlay_path,background,img)
 
+def overlay3d(background,overlay):
+    img =background[:,:,0]
+    img2 = img/ np.max(img)
+    #background = Image.fromarray(img2)
+    background = Image.fromarray((img2 * 255).astype('uint8'))
+    # background = background.rotate(90, expand=True)
+    # background = Image.fromarray((img2).astype('float'))
+    overlay = Image.fromarray((overlay * 255).astype('uint8'))
+
+    background = background.convert("RGBA")
+    overlay = overlay.convert("RGBA")
+
+    # Split into 3 channels
+    r, g, b, a = overlay.split()
+
+    # Increase Reds
+    g = b.point(lambda i: i * 0)
+
+    # Recombine back to RGB image
+    overlay = Image.merge('RGBA', (r, g, b, a))
+
+    new_img = Image.blend(background, overlay, 0.3)
+    return new_img
 
 def overlay(save_path, image_path, mask_path):
     all_frames = os.listdir(image_path)

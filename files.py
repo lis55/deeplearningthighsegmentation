@@ -31,6 +31,15 @@ all_frames = os.listdir('C:/fascia3dsmol/test/images')
 testGene = generator3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, patch_size=8, dim=(128, 128), n_channels=1, n_classes=1, shuffle=False)
 
 
+model = unet3d(pretrained_weights='C:/model/unet_ThighOuterSurfaceval.hdf5', input_size=(128, 128,8, 1))
+number_of_samples =len(os.listdir(test_images_path))*8*3
+results =  model.predict_generator(testGene, 18, verbose=1)
+saveResult3d("C:/results3d", results, test_frames_path=test_images_path,overlay_path='C:/resultsoverlay3d')
+#saveResult3dd("C:/results3d", results, test_frames_path=test_images_path)
+#print accuracy and validation loss
+loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
+print(loss)
+print(acc)
 
 #model = unet3d(pretrained_weights='unet_ThighOuterSurface.hdf5', input_size=(128, 128,8, 1))
 model = unet3d(input_size=(128, 128, 8,1))
@@ -60,8 +69,9 @@ plt.xlabel('epoch')
 plt.savefig('accuracy.png')
 
 model = unet3d(pretrained_weights='unet_ThighOuterSurfaceval.hdf5', input_size=(128, 128,8, 1))
-results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
-saveResult3d("C:/results3d", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay')
+number_of_samples =len(os.listdir(test_images_path))*28
+results =  model.predict_generator(testGene, number_of_samples, verbose=1)
+saveResult3d("C:/results3d", results, test_frames_path=test_images_path,overlay_path='C:/resultsoverlay')
 #print accuracy and validation loss
 loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
 print(loss)
