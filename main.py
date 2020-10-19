@@ -20,10 +20,10 @@ data_gen_args_dict = dict(shear_range=10,
 
 train_images_path = 'C:/fasciafilled/train_frames'
 validation_images_path = 'C:/fasciafilled/val_frames'
-test_images_path = "G:/DL_test_dataset_other_studies/elderly_men/images"
+test_images_path = "C:/fasciafilled/test_frames"
 train_masks_path = 'C:/fasciafilled/train_masks'
 validation_masks_path = 'C:/fasciafilled/val_masks'
-test_masks_path = "G:/DL_test_dataset_other_studies/elderly_men/FASCIA_FINAL"
+test_masks_path = "C:/fasciafilled/test_masks"
 
 all_frames = os.listdir(train_images_path)
 gen = DataGenerator(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=2, dim=(512, 512), n_channels=1, n_classes=1, shuffle=True)

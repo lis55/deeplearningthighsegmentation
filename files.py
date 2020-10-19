@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
-data_gen_args = data_gen_args_dict = dict(shear_range=30,
+data_gen_args = data_gen_args_dict = dict(shear_range=20,
                     rotation_range=20,
                     horizontal_flip=True,
                     width_shift_range=0.1,
@@ -18,17 +18,17 @@ data_gen_args = data_gen_args_dict = dict(shear_range=30,
 train_images_path = 'C:/fascia3dsmol/train/images'
 train_masks_path = 'C:/fascia3dsmol/train/masks'
 all_frames = os.listdir('C:/fascia3dsmol/train/images')
-gen = gen3da(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True, data_gen_args = data_gen_args)
+gen = generator3da(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=1, patch_size=8, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True, data_gen_args = data_gen_args)
 
 val_images_path = 'C:/fascia3dsmol/val/images'
 val_masks_path = 'C:/fascia3dsmol/val/masks'
 all_frames = os.listdir('C:/fascia3dsmol/val/images')
-genAug = gen3d(all_frames, val_images_path, val_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True)
+genAug = generator3d(all_frames, val_images_path, val_masks_path, to_fit=True,batch_size=1, patch_size=8, dim=(128, 128), n_channels=1, n_classes=1, shuffle=True)
 
 test_images_path = 'C:/fascia3dsmol/test/images'
 test_masks_path = 'C:/fascia3dsmol/test/masks'
 all_frames = os.listdir('C:/fascia3dsmol/test/images')
-testGene = gen3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=False)
+testGene = generator3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, patch_size=8, dim=(128, 128), n_channels=1, n_classes=1, shuffle=False)
 
 
 
@@ -37,7 +37,7 @@ model = unet3d(input_size=(128, 128, 8,1))
 
 model_checkpoint = ModelCheckpoint('unet_ThighOuterSurfaceval.hdf5', monitor='val_loss', verbose=1, save_best_only=True)
 model_checkpoint2 = ModelCheckpoint('unet_ThighOuterSurface.hdf5', monitor='loss', verbose=1, save_best_only=True)
-history = model.fit_generator(generator=gen, validation_data=genAug, validation_steps=7, steps_per_epoch=59, epochs=800, callbacks=[model_checkpoint2,model_checkpoint])
+history = model.fit_generator(generator=gen, validation_data=genAug, validation_steps=21, steps_per_epoch=216, epochs=1600, callbacks=[model_checkpoint2,model_checkpoint])
 
 print(history.history.keys())
 plt.figure()

@@ -6,8 +6,41 @@ import tensorflow
 import matplotlib.pyplot as plt
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
-
 '''
+data_gen_args = data_gen_args_dict = dict(shear_range=20,
+                    rotation_range=20,
+                    horizontal_flip=True,
+                    width_shift_range=0.1,
+                    height_shift_range=0.1,
+                    zoom_range = 0.1,
+                    fill_mode='nearest')
+test_images_path = 'C:/Users/lis/Desktop/downsize/image'
+test_masks_path = 'C:/Users/lis/Desktop/downsize/mask'
+all_frames = os.listdir('C:/Users/lis/Desktop/downsize/image')
+gen = generator3d(all_frames, test_images_path, test_masks_path,
+                 to_fit=True, batch_size=1, patch_size= 8, dim=(128, 128),
+                 n_channels=1, n_classes=1, shuffle=True, data_gen_args=data_gen_args)
+
+
+
+plotFromGenerator3d(gen)
+
+
+
+test_images_path = 'C:/Users/lis/Desktop/downsize/image'
+test_masks_path = 'C:/Users/lis/Desktop/downsize/mask'
+all_frames = os.listdir('C:/Users/lis/Desktop/downsize/image')
+testGene = gen3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=False)
+model = unet3d(pretrained_weights='unet_ThighOuterSurfaceval.hdf5', input_size=(128, 128,8, 1))
+results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
+saveResult3d("C:/results3dwomen", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay3dwomen')
+#print accuracy and validation loss
+loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
+print(loss)
+print(acc)
+
+
+
 DATA_PATH = 'C:/Users/lis/Desktop/downsize/image'
 all_masks = os.listdir(DATA_PATH)
 
@@ -65,28 +98,24 @@ ds.Rows, ds.Columns = data_downsampling.shape
 
 # print the image information given in the dataset
 print('The information of the data set after downsampling: \n')
-print(ds)'''
+print(ds)
 
-'''
 for i in gen:
     plt.imshow((i[0][0,:,:]), cmap=plt.cm.bone)
     plt.show()
     plt.imshow((i[1][0, :, :]), cmap=plt.cm.bone)
     plt.show()
-'''
 
-'''
 test_images_path = 'C:/elderlywomen3d/images'
 train_images_path = 'C:/elderlywomen3d/images'
 train_masks_path = 'C:/elderlywomen3d/masks'
 all_frames = os.listdir('C:/elderlywomen3d/images')
 testGene = gen3d(all_frames, train_images_path, train_masks_path, to_fit=True,batch_size=1, dim=(128,128), n_channels=1, n_classes=1, shuffle=True)
-'''
-'''
+
 test_images_path = 'C:/Users/lis/Desktop/downsize/image'
 test_masks_path = 'C:/Users/lis/Desktop/downsize/mask'
 all_frames = os.listdir('C:/Users/lis/Desktop/downsize/image')
-'''
+
 
 data_gen_args = data_gen_args_dict = dict(shear_range=30,
                     rotation_range=20,
@@ -110,6 +139,20 @@ test_masks_path = 'C:/Users/lis/Desktop/downsize/mask'
 all_frames = os.listdir('C:/Users/lis/Desktop/downsize/image')
 testGene = gen3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, dim=(128, 128), n_channels=1, n_classes=1, shuffle=False)
 model = unet3d(pretrained_weights='unet_ThighOuterSurfaceval.hdf5', input_size=(128, 128,8, 1))
+results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
+saveResult3d("C:/results3d", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay3d')
+#print accuracy and validation loss
+loss, acc = model.evaluate_generator(testGene, steps=3, verbose=0)
+print(loss)
+print(acc)
+
+'''
+test_images_path = 'C:/fascia3dsmol/test/images'
+test_masks_path = 'C:/fascia3dsmol/test/masks'
+all_frames = os.listdir('C:/fascia3dsmol/test/images')
+testGene = generator3d(all_frames, test_images_path, test_masks_path, to_fit=True,batch_size=1, patch_size= 8, dim=(128, 128), n_channels=1, n_classes=1, shuffle=False)
+
+model = unet3d(input_size=(128, 128,8, 1))
 results =  model.predict_generator(testGene, len(os.listdir(test_images_path)), verbose=1)
 saveResult3d("C:/results3d", results, test_frames_path=test_images_path,overlay=True,overlay_path='C:/resultsoverlay3d')
 #print accuracy and validation loss
