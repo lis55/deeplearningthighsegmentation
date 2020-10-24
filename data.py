@@ -285,16 +285,18 @@ class DataGenerator(Sequence):
     def downsample(self,dim,path):
         ids = os.listdir(self.mask_path)
         for i in ids:
-            img = self._load_grayscale_image(self.mask_path + '/' + i)[:, :, 0]
-            img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+            img = self._load_grayscale_image_VTK(self.mask_path + '/' + i)[:, :, 0]
+            img = img*255
             #img = img.astype(np.int8)
-            cv2.imwrite(path+'/'+'mask'+'/'+i, img)
+            img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+            cv2.imwrite(path+'/'+'masks'+'/'+i, img)
         ids=os.listdir(self.image_path)
         for i in ids:
             img = self._load_dicom_image(self.image_path+'/'+i)[:,:,0]
-            img = cv2.resize(img,dim,interpolation=cv2.INTER_AREA)
+            #img = cv2.resize(img,dim,interpolation=cv2.INTER_AREA)
             img = (img*255).astype(np.int16)
-            cv2.imwrite(path+'/'+'image'+'/'+i[:-3]+'png', img)
+            img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            cv2.imwrite(path+'/'+'images'+'/'+i[:-3]+'png', img)
 
 def load_dicom(foldername, doflipz = True):
     reader = vtk.vtkDICOMImageReader()
@@ -355,6 +357,7 @@ def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2, test_fr
             img = polar_image
             '''
             overlay = Image.fromarray((img*255).astype('uint8'))
+            overlay = cv2.rotate(overlay, cv2.ROTATE_90_COUNTERCLOCKWISE)
             background = load_dicom(os.path.join(test_frames_path, all_frames[i]))
             background = background[:, :, 0] / np.max(background[:, :, 0])
             background = Image.fromarray((background * 255).astype('uint8'))
@@ -487,7 +490,7 @@ def plotFromGenerator3d(gen):
 class generator3da(Sequence):
 
     def __init__(self, list_IDs, image_path, mask_path,
-                 to_fit=True, batch_size=32, patch_size=8, dim=(512, 512),
+                 to_fit=True, batch_size=32, patch_size=8, dim=(512, 512),dimy=(512,512),
                  n_channels=1, n_classes=10, shuffle=True, data_gen_args=None):
         """Initialization
         :param list_IDs: list of all 'label' ids to use in the generator
@@ -508,6 +511,7 @@ class generator3da(Sequence):
         self.to_fit = to_fit
         self.batch_size = batch_size
         self.dim = dim
+        self.dimy = dimy
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.shuffle = shuffle
@@ -608,7 +612,7 @@ class generator3da(Sequence):
         :param list_IDs_temp: list of label ids to load
         :return: batch of images
         """
-        Y = np.zeros((self.batch_size, *self.dim, self.patch_size,self.n_channels))
+        Y = np.zeros((self.batch_size, *self.dimy, self.patch_size,self.n_channels))
         # Generate data
 
         for patch in list_IDs_temp:
@@ -663,7 +667,7 @@ class generator3da(Sequence):
 class generator3d(Sequence):
 
     def __init__(self, list_IDs, image_path, mask_path,
-                 to_fit=True, batch_size=32, patch_size=8, dim=(512, 512),
+                 to_fit=True, batch_size=32, patch_size=8, dim=(512, 512),dimy =(512,512),
                  n_channels=1, n_classes=10, shuffle=True):
         """Initialization
         :param list_IDs: list of all 'label' ids to use in the generator
@@ -684,6 +688,7 @@ class generator3d(Sequence):
         self.to_fit = to_fit
         self.batch_size = batch_size
         self.dim = dim
+        self.dimy = dimy
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.shuffle = shuffle
@@ -782,7 +787,7 @@ class generator3d(Sequence):
         :param list_IDs_temp: list of label ids to load
         :return: batch of images
         """
-        Y = np.zeros((self.batch_size, *self.dim, self.patch_size,self.n_channels))
+        Y = np.zeros((self.batch_size, *self.dimy, self.patch_size,self.n_channels))
         # Generate data
 
         for patch in list_IDs_temp:
@@ -820,105 +825,6 @@ class generator3d(Sequence):
         self.indexes = np.arange(len(self.list_IDs))
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
-
-
-class gen3da(DataGenerator2):
-    def _generate_y(self, list_IDs_temp):
-        """Generates data containing batch_size images
-        :param list_IDs_temp: list of label ids to load
-        :return: batch of images
-        """
-        # Initialization
-        #Y = np.empty((1,1,*self.dim,28))
-        Y = np.zeros((1, *self.dim, 8, 1))
-        # Generate data
-
-
-        for ID in list_IDs_temp:
-            slicesIds2 = os.listdir(self.mask_path + '/' + ID)
-            # Store sample
-            for i,IDs in enumerate(slicesIds2[::3][:-2]):
-                img = self._load_grayscale_image_VTK(self.mask_path + '/' + ID + '/' + IDs)[:,:,0]
-                Y[0,:,:,i,0] = img
-                if self.bool:
-                    Y[0,:,:,i,:] = self.trans.apply_transform(Y[0,:,:,i,:], self.param)
-        return Y
-
-    def _generate_X(self, list_IDs_temp):
-        """Generates data containing batch_size images
-        :param list_IDs_temp: list of label ids to load
-        :return: batch of images
-        """
-        # Initialization
-        X = np.zeros((1,*self.dim,8,1))
-
-        self.param = self.trans.get_random_transform(self.dim)
-
-        if random.uniform(0,1) >= 0.5:
-            self.bool = True
-        else:
-            self.bool = False
-        # Generate data
-        for ID in list_IDs_temp:
-            slicesIds2 = os.listdir(self.image_path + '/' + ID)
-            # Store sample
-            for i,IDs in enumerate(slicesIds2[::3][:-2]):
-                img = load_grayscale_image_VTK(self.image_path + '/' + ID + '/' + IDs)[:,:,0]
-                X[0,:,:,i,0] = img
-                if self.bool:
-                    X[0,:,:,i,:] = self.trans.apply_transform(X[0,:,:,i,:], self.param)
-        return X
-
-    def __next__(self):
-        if self.n >= self.max:
-            self.n = 0
-        result = self.__getitem__(self.n)
-        self.n += 1
-        return result
-
-class gen3d(DataGenerator):
-    def _generate_y(self, list_IDs_temp):
-        """Generates data containing batch_size images
-        :param list_IDs_temp: list of label ids to load
-        :return: batch of images
-        """
-        # Initialization
-        #Y = np.empty((1,1,*self.dim,28))
-        Y = np.zeros((1, *self.dim, 8, 1))
-        # Generate data
-
-
-        for ID in list_IDs_temp:
-            slicesIds2 = os.listdir(self.mask_path + '/' + ID)
-            # Store sample
-            for i,IDs in enumerate(slicesIds2[::3][:-2]):
-                img = self._load_grayscale_image_VTK(self.mask_path + '/' + ID + '/' + IDs)[:,:,0]
-                Y[0,:,:,i,0] = img
-        return Y
-
-    def _generate_X(self, list_IDs_temp):
-        """Generates data containing batch_size images
-        :param list_IDs_temp: list of label ids to load
-        :return: batch of images
-        """
-        # Initialization
-        X = np.zeros((1,*self.dim,8,1))
-
-        # Generate data
-        for ID in list_IDs_temp:
-            slicesIds2 = os.listdir(self.image_path + '/' + ID)
-            # Store sample
-            for i,IDs in enumerate(slicesIds2[::3][:-2]):
-                img = load_grayscale_image_VTK(self.image_path + '/' + ID + '/' + IDs)[:,:,0]
-                X[0,:,:,i,0] = img
-        return X
-
-    def __next__(self):
-        if self.n >= self.max:
-            self.n = 0
-        result = self.__getitem__(self.n)
-        self.n += 1
-        return result
 
 
 def load_grayscale_image_VTK(image_path):
@@ -1027,10 +933,11 @@ def saveResult3dd(save_path,npyfile, patch_size =8, flag_multi_class = False,num
     for j,item in enumerate(npyfile):
         for i in range(0,np.shape(npyfile)[3]):
             img = labelVisualize(num_class, COLOR_DICT, item) if flag_multi_class else item[:, :, i,0]
+            print(j)
             io.imsave(os.path.join(save_path, test_data[j][1][i][:-4] + ".png"), img)
 
 
-def saveResult3d(save_path, npyfile, patch_size=8, flag_multi_class=False, num_class=2, test_frames_path=None, overlay_path=None):
+def saveResult3d( npyfile, patch_size=8, flag_multi_class=False, num_class=2, save_path = None, test_frames_path=None, framepath2=None, overlay_path=None,overlay_path2 = None):
     '''
     for i,item in enumerate(npyfile):
         img = labelVisualize(num_class,COLOR_DICT,item) if flag_multi_class else item[:,:,0]
@@ -1054,14 +961,46 @@ def saveResult3d(save_path, npyfile, patch_size=8, flag_multi_class=False, num_c
             io.imsave(os.path.join(save_path, test_data[j][1][i][:-4] + ".png"), img)
             imagepath = test_frames_path + '/' + test_data[j][0] + '/' + test_data[j][1][i]
             background = load_grayscale_image_VTK(imagepath)
-            path = os.path.join(overlay_path, test_data[j][1][i][:-4] + '.png')
+            path = overlay_path+ '/'+ test_data[j][1][i][:-4] + '.png'
             overlay3d(background, img).save(path, "PNG")
+            imagepath2 = framepath2 + '/'  + test_data[j][1][i][:-3]+'dcm'
+            background = load_dicom(imagepath2)
+            path = os.path.join(overlay_path2, test_data[j][1][i][:-4] + '.png')
+            overlay3dup(background, img).save(path, "PNG")
 
 
+def overlay3dup(background,overlay):
+    img =background[:,:,0]
+    img2 = img/ np.max(img)
+    #background = Image.fromarray(img2)
+    img2 = cv2.rotate(img2, cv2.ROTATE_90_CLOCKWISE)
+    background = Image.fromarray((img2 * 255).astype('uint8'))
+    # background = background.rotate(90, expand=True)
+    # background = Image.fromarray((img2).astype('float'))
+    overlay = cv2.resize(overlay[:, :], (512, 512), interpolation=cv2.INTER_NEAREST)
+    overlay = cv2.medianBlur(overlay, 5)
+    overlay = Image.fromarray((overlay * 255).astype('uint8'))
+
+
+    background = background.convert("RGBA")
+    overlay = overlay.convert("RGBA")
+
+    # Split into 3 channels
+    r, g, b, a = overlay.split()
+
+    # Increase Reds
+    g = b.point(lambda i: i * 0)
+
+    # Recombine back to RGB image
+    overlay = Image.merge('RGBA', (r, g, b, a))
+
+    new_img = Image.blend(background, overlay, 0.3)
+    return new_img
 def overlay3d(background,overlay):
     img =background[:,:,0]
     img2 = img/ np.max(img)
     #background = Image.fromarray(img2)
+    #img2 = cv2.rotate(img2, cv2.ROTATE_90_COUNTERCLOCKWISE)
     background = Image.fromarray((img2 * 255).astype('uint8'))
     # background = background.rotate(90, expand=True)
     # background = Image.fromarray((img2).astype('float'))
@@ -1109,6 +1048,40 @@ def overlay(save_path, image_path, mask_path):
         new_img = Image.blend(background, overlay, 0.3)
         #new_img = background
         new_img.save(os.path.join(save_path,'image_' + image[6:16] + 'png'), "PNG")
+
+def overlay3dupsample(save_path, image_path, mask_path):
+    all_frames = os.listdir(image_path)
+    all_masks = os.listdir(mask_path)
+    for image, mask in zip(all_frames, all_masks):
+        overlay = load_grayscale_image_VTK(os.path.join(mask_path, mask))
+        overlay = cv2.resize(overlay[:,:,0],(512,512),interpolation=cv2.INTER_NEAREST)
+        overlay = cv2.medianBlur(overlay, 5)
+        overlay = Image.fromarray((overlay[:,:]*255).astype('uint8'))
+        #overlay = Image.open(os.path.join(mask_path, mask))
+        #overlay = overlay.resize((512,512))
+        #overlay = overlay.filter(ImageFilter.MedianFilter(3))
+        #overlay = cv2.medianBlur(overlay, 5)
+        img = load_dicom(os.path.join(image_path, image))
+        img2 = img[:, :,0] / np.max(img[:, :,0])
+        background = Image.fromarray((img2 * 255).astype('uint8'))
+        background = background.rotate(180, expand=False)
+        # background = Image.fromarray((img2).astype('float'))
+
+        background = background.convert("RGBA")
+        overlay = overlay.convert("RGBA")
+
+        # Split into 3 channels
+        r, g, b, a = overlay.split()
+
+        # Increase Reds
+        g = b.point(lambda i: i * 0)
+
+        # Recombine back to RGB image
+        overlay = Image.merge('RGBA', (r, g, b, a))
+
+        new_img = Image.blend(background, overlay, 0.3)
+        # new_img = background
+        new_img.save(os.path.join(save_path, 'image_' + image[6:16] + 'png'), "PNG")
 
 
 

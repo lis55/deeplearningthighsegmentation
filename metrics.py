@@ -5,7 +5,7 @@ from keras import backend as K
 import tensorflow as tf
 
 
-def dice_coefficient(y_true, y_pred, smooth=1.):
+def dice_coefficient(y_true, y_pred, smooth=2.):
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
@@ -15,6 +15,8 @@ def dice_coefficient(y_true, y_pred, smooth=1.):
 def dice_coefficient_loss(y_true, y_pred):
     return -dice_coefficient(y_true, y_pred)
 
+def hybrid_loss(y_true,y_pred):
+    return -K.binary_crossentropy(y_true,y_pred)+3*dice_coefficient_loss(y_true, y_pred)
 
 def weighted_dice_coefficient(y_true, y_pred, axis=(-3, -2, -1), smooth=0.00001):
     """

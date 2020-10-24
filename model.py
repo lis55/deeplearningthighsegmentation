@@ -61,7 +61,7 @@ def unet(pretrained_weights=None, input_size=(512, 512, 1)):
     model = Model(input=inputs, output=conv10)
 
     # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
-    model.compile(optimizer=Adam(lr=1e-4), loss=dice_loss, metrics=['accuracy'])
+    model.compile(optimizer=Adam(lr=1e-4), loss=dice_loss, metrics=[dice_coefficient])
     #model.compile(optimizer=Adam(lr=1e-4), loss=dice_loss, metrics=dice_loss)
     # model.compile(optimizer=Adam(lr=1e-5), loss=FocalLoss, metrics=[tf.keras.metrics.MeanIoU(num_classes=2)])
     # model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy(0.5), metrics=['accuracy'])
@@ -238,10 +238,13 @@ def unet3d(pretrained_weights=None, input_size=(128, 128,8, 16)):
     conv9 = Conv3D(2, 3, activation='relu', padding='same', kernel_initializer='he_normal')(conv9)
     conv10 = Conv3D(1, 1, activation='sigmoid')(conv9)
 
+
+
     model = Model(input=inputs, output=conv10)
 
-    # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
-    model.compile(optimizer=Adam(lr=1e-5), loss=dice_coefficient_loss, metrics=[dice_coefficient])
+    model.compile(optimizer = Adam(lr = 1e-5), loss = 'binary_crossentropy', metrics = [dice_coefficient])
+    #model.compile(optimizer=Adam(lr=1e-5 ), loss=dice_coefficient_loss, metrics=[dice_coefficient])
+    #model.compile(optimizer=Adam(lr=1e-4), loss=hybrid_loss, metrics=[dice_coefficient])
     #model.compile(optimizer=Adam(lr=1e-4), loss=dice_loss, metrics=dice_loss)
     # model.compile(optimizer=Adam(lr=1e-5), loss=FocalLoss, metrics=[tf.keras.metrics.MeanIoU(num_classes=2)])
     # model.compile(optimizer=Adam(lr=1e-4), loss=weighted_cross_entropy(0.5), metrics=['accuracy'])
