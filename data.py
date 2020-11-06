@@ -105,7 +105,7 @@ class DataGenerator(Sequence):
     """Generates data for Keras
     Sequence based data generator. Suitable for building data generator for training and prediction.
     """
-    def __init__(self, list_IDs, image_path, mask_path,
+    def __init__(self, list_IDs, data_path,
                  to_fit=True, batch_size=32, dim=(512, 512),
                  n_channels=1, n_classes=10, shuffle=True):
         """Initialization
@@ -120,8 +120,8 @@ class DataGenerator(Sequence):
         :param shuffle: True to shuffle label indexes after every epoch
         """
         self.list_IDs = list_IDs
-        self.image_path = image_path
-        self.mask_path = mask_path
+        self.image_path = data_path + "/images"
+        self.mask_path = data_path + "/masks"
         self.to_fit = to_fit
         self.batch_size = batch_size
         self.dim = dim
@@ -293,9 +293,9 @@ class DataGenerator(Sequence):
         ids=os.listdir(self.image_path)
         for i in ids:
             img = self._load_dicom_image(self.image_path+'/'+i)[:,:,0]
-            #img = cv2.resize(img,dim,interpolation=cv2.INTER_AREA)
+            img = cv2.resize(img,dim,interpolation=cv2.INTER_AREA)
             img = (img*255).astype(np.int16)
-            img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            #img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
             cv2.imwrite(path+'/'+'images'+'/'+i[:-3]+'png', img)
 
 def load_dicom(foldername, doflipz = True):
@@ -545,7 +545,7 @@ class generator3da(Sequence):
         :return: loaded image
         """
         img = load_dicom(image_path)
-        img = img / np.max(img)
+        img = img / np.amax(img)
 
         #self.polar(img)
 

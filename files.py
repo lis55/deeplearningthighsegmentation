@@ -57,12 +57,23 @@ testGene.downsample((512,512),'C:/fasciadownsample')
 
 test_paths = [['G:/Datasets/elderlymen1/2d/test_frames','G:/Datasets/elderlymen2/2d/images', 'G:/Datasets/youngmen/2d/images', 'G:/Datasets/elderlywomen/2d/images'],
               ['G:/Datasets/elderlymen1/2d/test_masks','G:/Datasets/elderlymen2/2d/FASCIA_FINAL', 'G:/Datasets/youngmen/2d/FASCIA_FINAL', 'G:/Datasets/elderlywomen/2d/FASCIA_FINAL']]
-test_frames = test_paths[0][1]
-test_masks = test_paths[1][1]
+
+test_frames = test_paths[0][0]
+test_masks = test_paths[1][0]
+
+#test_frames = 'G:/Datasets/elderlymen1/2d/images'
+#test_masks = 'G:/Datasets/elderlymen1/2d/FASCIA_FILLED'
+
+#reorderframes('G:/Datasets/elderlymen1/3dmedium/images','G:/Datasets/elderlymen1/3dmedium/masks',
+#              'G:/Datasets/elderlymen1/3dmedium/image','G:/Datasets/elderlymen1/3dmedium/mask',28,72)
+test_frames = 'G:/Datasets/elderlymen1/3dmedium/test/images'
+test_masks = 'G:/Datasets/elderlymen1/3dmedium/test/masks'
 all_frames = os.listdir(test_frames)
 testGene = DataGenerator(all_frames, test_frames, test_masks, to_fit=True, batch_size=1, dim=(512, 512), n_channels=1, n_classes=1, shuffle=False)
-testGene.downsample((128,128),'G:/Datasets/elderlymen2/3ddownsampled')
-#reorderframes('G:/Datasets/youngmen/3d/images','G:/Datasets/youngmen/3d/masks',
-#              'G:/Datasets/youngmen/3d/image','G:/Datasets/youngmen/3d/mask',26,17)
+te = generator3da(all_frames, test_frames, test_masks, to_fit=True,batch_size=1, patch_size=2, dim=(256, 256),dimy =(256,256), n_channels=1, n_classes=1, shuffle=False,data_gen_args=data_gen_args)
+plotFromGenerator3d(te)
+testGene.downsample((256,256),'G:/Datasets/elderlymen1/3dmedium')
+reorderframes('G:/Datasets/elderlymen1/3dmedium/images','G:/Datasets/elderlymen1/3dmedium/masks',
+              'G:/Datasets/elderlymen1/3dmedium/image','G:/Datasets/elderlymen1/3dmedium/mask',28,72)
 
 

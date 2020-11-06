@@ -82,21 +82,28 @@ def dice_coef(img, img2):
 def calc_hausdorff(imagepath_1, imagepath_2):
     all_masks1 = os.listdir(imagepath_1)
     all_masks2 = os.listdir(imagepath_2)
+    ''' 
+    all_masks2 = []
+
+    for i in all_masks1:
+        all_masks2.append('label'+i[5:len(i)])
+    '''
     hd=[]
     dice =[]
     for mask1, mask2 in zip(all_masks1,all_masks2):
         m1 = load_grayscale_image_VTK(os.path.join(imagepath_1, mask1))
         m1 = cv2.rotate(m1, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        m1 = cv2.rotate(m1, cv2.ROTATE_90_COUNTERCLOCKWISE)
         #m1 = cv2.rotate(m1, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        #m1 = cv2.rotate(m1, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
         plt.imshow(Image.fromarray(m1[:,:]*255), cmap=plt.cm.bone)
         plt.show()
         m2 = load_grayscale_image_VTK(os.path.join(imagepath_2, mask2))
         #m2 = cv2.rotate(m2, cv2.ROTATE_90_COUNTERCLOCKWISE)
         plt.imshow(Image.fromarray(m2[:,:,0]*255), cmap=plt.cm.bone)
         plt.show()
-        #m1 = cv2.resize(m1[:, :], (512, 512), interpolation=cv2.INTER_NEAREST)
-        #m1 = cv2.medianBlur(m1, 5)
+        m1 = cv2.resize(m1[:, :], (512, 512), interpolation=cv2.INTER_NEAREST)
+        m1 = cv2.medianBlur(m1, 5)
         dice.append(dice_coef(m1, m2[:,:,0]))
         m1 = sitk.GetImageFromArray(m1, isVector=False)
         m2 = sitk.GetImageFromArray(m2[:,:,0], isVector=False)
@@ -115,7 +122,7 @@ def calc_hausdorff(imagepath_1, imagepath_2):
 
 
 
-calc_hausdorff('C:/final_results/elderlymen2/3d','G:/Datasets/elderlymen1/3ddownsampled/masks')
+calc_hausdorff('C:/final_results/elderlymen2/3d','G:/Datasets/elderlymen2/2d/FASCIA_FINAL')
 
 accuracy('C:/results3d','C:/fascia3dtest/mask2')
 
